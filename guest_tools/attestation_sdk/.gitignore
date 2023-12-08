@@ -1,0 +1,12 @@
+.classpath
+.project
+.settings/
+src/main/ngnsec-app/node/
+target/
+*.exe
+*.rpm
+*.deb
+.pydevproject
+*.iml
+.idea/
+dist/

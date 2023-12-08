@@ -1,0 +1,22 @@
+[tool.poetry]
+name = "guest-app"
+version = "0.1.0"
+description = ""
+authors = ["Samir Menon <samir@blyss.dev>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.10"
+pynacl = "^1.5.0"
+nv-attestation-sdk = {path = "../guest_tools/attestation_sdk/dist/nv_attestation_sdk-1.0.0-py3-none-any.whl"}
+verifier = {path = "../guest_tools/local_gpu_verifier"}
+
+[tool.poetry.scripts]
+basic_test = "guest_app.main:basic_test"
+
+[tool.poetry.group.dev.dependencies]
+black = "^23.9.1"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

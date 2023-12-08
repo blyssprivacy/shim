@@ -1,0 +1,8 @@
+[Unit]
+Description=Blyss GPU VFIO PCI passthrough
+
+[Service]
+ExecStart=/home/blyss/hopper-enclave/nvtrust/blyss-gpu-vfio-pci-passthrough.sh
+
+[Install]
+WantedBy=multi-user.target

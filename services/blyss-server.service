@@ -1,0 +1,9 @@
+[Unit]
+Description=Blyss LLM server
+After=blyss-nvidia-persistenced.service
+
+[Service]
+ExecStart=/home/guest/nvtrust-private/services/blyss-server.sh
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,13 @@
+*.idea/
+*__pycache__
+*build/
+*.egg-info
+.DS_Store
+*.iso
+*.qcow2
+third_party/
+*.bckp
+initrd-tmp
+images/
+*.log
+.vscode/
