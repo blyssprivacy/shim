@@ -1,40 +1,36 @@
-# nvTrust: NVIDIA Confidential Computing Ancillary Software
+# Confidential Connector
 
-nvTrust is a repository which contains much of the utilities & tools, open-source code, and SDKs leveraged when using NVIDIA solutions in trusted environements, such as Confidential Computing.
+The confidential connector uses new NVIDIA H100 hardware enclave technology
+to establish an *end-to-end* secure tunnel between users and the GPU,
+available publicly from `enclave.blyss.dev`.
+The connector code (this repo), and associated services,
+are open source, so that anyone can verify our claims.
 
-For more information, including documentation, whitepapers, and videos regarding the Hopper Confidential Computing story, please visit [docs.nvidia.com/confidential-computing/index.html]()
+The connector is part of the Blyss Confidential AI service, the first verifiably confidential LLM API endpoint.
+Our goal is to make it impossible for interactions with LLMs to be monitored by anyone, 
+including us, and to make that claim publicly verifiable. 
 
-## Early Access Considerations
-This branch of nvTrust is currently considered 
-`Early Access`. 
+Details on our security model and roots of trust are available in our [deep dive](https://blog.blyss.dev/confidential-ai-from-gpu-enclaves/).
 
-This early-access software release features a software stack targeting a single H100 GPU in passthrough mode with a single session key for encryption and authentication and basic use of the Developer Tools. 
+> [!NOTE]  
+> The underlying NVIDIA Confidential Computing technology in the H100 is currently considered 'Early Access'. 
 
-Code and data will be confidential up to the limits of the NIST SP800-38D AES-GCM standard, after which the VM should be restarted, which causes a fresh session key to be created.
+## Connector Responsibilities
 
-**NVIDIA recommends users invoke good practices while utilizing the early-access by testing only with synthetic data and non-proprietary AI models.**
+The connector is run inside a CPU confidential VM, and is responsible for:
 
-## Release Notes
-- Hopper Confidential Compute early access features are supported on NVIDIA Driver Version `535.86` and later only
-- Release Notes may be found [here](https://docs.nvidia.com/confidential-computing/#release-notes).
+1. Requesting attestations from the CPU and GPU.
+2. Requesting a TLS certificate for `enclave.blyss.dev` from Let's Encrypt.
+3. Performing TLS termination, forwarding traffic to a local OpenAI-compatible chat completions service running on port 8000.
+4. The connector also serves a full attestation document, which
+proves that it is running in an authentic NVIDIA GPU, at 
+`/.well-known/appspecific/dev.blyss.enclave.attestation/attestation.json`.
 
-## License
-The license for this repository is Apache v2 except where otherwise noted.
-## Folder Sructure
-- **docs** - Collateral relating to Confidential Computing with NVIDIA GPUs
-    - Release Notes
-    - Deployment Guide (Walkthrough)
-    - Hopper Confidential Computing Whitepaper
-    - Local Verifier Application User Guide
-- **guest_tools** - Contains utilities specific to running _within_ a Confidential VM
-    - Attestation SDK
-    - Local Attestation Verifiers
-    - RIM Acquisition Service
-- **host_tools** - Contains utilities specific to configuring the GPU's Confidential Computing Modes, as well as sample scripts to create and run a Confidential VM from within the _host_
-    - GPU CC Mode Setting scripts
-    - KVM Sample Scripts for launching a CVM
-    - Staging folders for Deployment Guide found under docs/
-- **infrastructure** - Contains the open source, third-party code that was used for validation of our Hopper Confidential Computing Solutions
-    - KVM source code, including OVMF and QEMU
-    - Linux source code, along with appropriate GPU-specific patches
-    - Pointers to original GitHub sources.
+## Build
+
+The connector can be built with:
+```
+docker build -t connector .
+```
+
+The public build of the connector is available as [`blintzbase/shim`](https://hub.docker.com/r/blintzbase/shim).
