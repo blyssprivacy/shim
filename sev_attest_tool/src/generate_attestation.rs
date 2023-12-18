@@ -1,6 +1,6 @@
 use sev::firmware::guest::*;
 
-/// Performs an AMD-SEV attestation and returns the report
+/// Requests an AMD-SEV attestation from the CPU, and returns the report
 /// as a JSON string.
 pub fn generate_attestation_report(data_to_attach: Option<String>) -> String {
     // This is the data we are attaching to the attestation request.

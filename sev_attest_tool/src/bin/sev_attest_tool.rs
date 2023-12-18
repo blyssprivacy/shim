@@ -1,15 +1,10 @@
 //! Create and verify AMD SEV-SNP attestation reports.
 //!
 //! Builds off of the the "SEV-SNP Platform Attestation Using VirTEE/SEV" whitepaper.
-mod generate_attestation;
-mod verify_attestation;
-
 use clap::*;
 
-use crate::{
-    generate_attestation::generate_attestation_report,
-    verify_attestation::verify_attestation_report,
-};
+use sev_attest_tool::generate_attestation::*;
+use sev_attest_tool::verify_attestation::*;
 
 #[derive(Parser, Debug)]
 struct Cli {
@@ -53,7 +48,8 @@ fn main() {
             vcek_path,
         } => {
             println!("Verifying attestation report...");
-            verify_attestation_report(&path, fail_on_purpose, vcek_path.as_deref());
+            verify_attestation_report_cli(&path, vcek_path.as_deref(), fail_on_purpose);
+            println!("RESULT: PASS\nVerification successful!");
         }
     }
 }

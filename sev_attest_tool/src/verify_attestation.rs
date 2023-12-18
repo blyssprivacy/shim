@@ -4,21 +4,19 @@ use sev::{
     firmware::{guest::AttestationReport, host::TcbVersion},
 };
 
+/// The AMD Genoa ARK and ASK certificates.
 pub const GENOA_PEM: &'static [u8] = include_bytes!("../data/Genoa.pem");
+
+/// The AMD SEV-SNP product name for Genoa.
 pub const SEV_PROD_NAME: &str = "Genoa";
 
+/// The AMD Key Distribution Service (KDS) URL.
 pub const KDS_CERT_SITE: &str = "https://kdsintf.amd.com";
-pub const KDS_VCEK: &str = "/vcek/v1";
-pub const _KDS_CERT_CHAIN: &str = "cert_chain";
 
-/// Converts a byte slice into a hex string
-pub fn bytes_to_hex(buf: &[u8]) -> String {
-    let mut hexstr = String::new();
-    for &b in buf {
-        hexstr.push_str(&format!("{:02x}", b));
-    }
-    hexstr
-}
+/// The AMD Key Distribution Service (KDS) VCEK endpoint.
+pub const KDS_VCEK: &str = "/vcek/v1";
+
+const _KDS_CERT_CHAIN: &str = "cert_chain";
 
 /// Requests the main AMD SEV-SNP certificate chain.
 ///
@@ -54,7 +52,7 @@ pub fn get_cert_chain(sev_prod_name: &str) -> ca::Chain {
 ///
 /// This function returns the VCEK as a DER-encoded X509 certificate.
 pub fn request_vcek(chip_id: [u8; 64], reported_tcb: TcbVersion, sev_prod_name: &str) -> Vec<u8> {
-    let hw_id = bytes_to_hex(&chip_id);
+    let hw_id = hex::encode(&chip_id);
     let url = format!(
     "{KDS_CERT_SITE}{KDS_VCEK}/{sev_prod_name}/{hw_id}?blSPL={:02}&teeSPL={:02}&snpSPL={:02}&ucodeSPL={:02}",
         reported_tcb.bootloader,
@@ -62,7 +60,7 @@ pub fn request_vcek(chip_id: [u8; 64], reported_tcb: TcbVersion, sev_prod_name: 
         reported_tcb.snp,
         reported_tcb.microcode,
         );
-    println!("Requesting VCEK from: {url}\n");
+    // println!("Requesting VCEK from: {url}\n");
     let rsp_bytes = reqwest::blocking::get(&url)
         .unwrap()
         .bytes()
@@ -71,25 +69,45 @@ pub fn request_vcek(chip_id: [u8; 64], reported_tcb: TcbVersion, sev_prod_name: 
     rsp_bytes
 }
 
-pub fn verify_attestation_report(path: &str, fail_on_purpose: bool, vcek_path: Option<&str>) {
-    // Read the report from the file
-    let report_json_str = std::fs::read_to_string(path).unwrap();
+/// Verifies an attestation report, using the provided file paths and options.
+pub fn verify_attestation_report_cli(
+    report_path: &str,
+    vcek_path: Option<&str>,
+    fail_on_purpose: bool,
+) {
+    let report_json_str = std::fs::read_to_string(report_path).unwrap();
+    let vcek_bytes = if let Some(vcek_path) = vcek_path {
+        std::fs::read(vcek_path).unwrap()
+    } else {
+        let report: AttestationReport = serde_json::from_str(&report_json_str).unwrap();
+        let vcek = request_vcek(report.chip_id, report.reported_tcb, SEV_PROD_NAME);
+        vcek
+    };
 
-    // Deserialize the report
-    let mut report: AttestationReport = serde_json::from_str(&report_json_str).unwrap();
+    verify_attestation_report(&report_json_str, &vcek_bytes, fail_on_purpose);
+}
+
+/// Verifies an attestation report, using the provided report JSON string and VCEK bytes.
+///
+/// Verification intentionally fails if `fail_on_purpose` is true.
+pub fn verify_attestation_report(report_json: &str, vcek_bytes: &[u8], fail_on_purpose: bool) {
+    let report: AttestationReport = serde_json::from_str(report_json).unwrap();
+    let vcek = Certificate::from_der(vcek_bytes).unwrap().into();
+
+    verify_attestation_report_raw(report, vcek, fail_on_purpose);
+}
+
+/// Verifies an attestation report, using the provided report and VCEK.
+///
+/// Verification intentionally fails if `fail_on_purpose` is true.
+pub fn verify_attestation_report_raw(
+    mut report: AttestationReport,
+    vcek: Certificate,
+    fail_on_purpose: bool,
+) {
     if fail_on_purpose {
         report.measurement[0] = report.measurement[0].wrapping_add(1);
     }
-
-    // Extract info from report
-    let chip_id = report.chip_id;
-    let reported_tcb = report.reported_tcb;
-
-    // Get the VCEK
-    let vcek_bytes = vcek_path
-        .map(|path| std::fs::read(path).unwrap())
-        .unwrap_or_else(|| request_vcek(chip_id, reported_tcb, SEV_PROD_NAME));
-    let vcek = Certificate::from_der(&vcek_bytes).unwrap().into();
 
     // Get the ARK and ASK certificates
     let cert_chain = get_cert_chain(SEV_PROD_NAME);
@@ -104,10 +122,8 @@ pub fn verify_attestation_report(path: &str, fail_on_purpose: bool, vcek_path: O
     // check that the attestation report is signed by the VCEK.
     let verification_result = (&full_cert_chain, &report).verify();
 
-    match verification_result {
-        Ok(_) => println!("RESULT: PASS\nVerification successful!"),
-        Err(e) => println!("RESULT: FAIL\nVerification failed: {}", e),
-    }
+    // Panic with detailed error if failed
+    verification_result.unwrap();
 }
 
 #[cfg(test)]
@@ -116,11 +132,6 @@ mod test {
 
     const SAMPLE_ATTESTATION: &'static str = include_str!("../data/sample_attestation_report.json");
     const SAMPLE_VCEK: &'static [u8] = include_bytes!("../data/sample_vcek.crt");
-
-    #[test]
-    fn test_bytes_to_hex() {
-        assert_eq!(bytes_to_hex(&[0x01, 0x02, 0x03]), "010203");
-    }
 
     #[test]
     fn test_sample_attestation_verifies() {
@@ -150,5 +161,18 @@ mod test {
 
         let verification_result = (&full_cert_chain, &report).verify();
         assert!(verification_result.is_err());
+    }
+
+    #[test]
+    fn test_verify_attestation_report() {
+        verify_attestation_report(SAMPLE_ATTESTATION, SAMPLE_VCEK, false);
+    }
+
+    #[test]
+    fn test_verify_attestation_report_fetch_vcek() {
+        // NB: this test makes a web request
+        let report: AttestationReport = serde_json::from_str(SAMPLE_ATTESTATION).unwrap();
+        let vcek_bytes = request_vcek(report.chip_id, report.reported_tcb, SEV_PROD_NAME);
+        verify_attestation_report(SAMPLE_ATTESTATION, &vcek_bytes, false);
     }
 }
