@@ -1,0 +1,3 @@
+[submodule "sev-attest-tool"]
+	path = sev-attest-tool
+	url = https://github.com/blyssprivacy/sev-attest-tool.git

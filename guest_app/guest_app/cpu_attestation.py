@@ -45,5 +45,22 @@ def perform_cpu_attestation(associated_data: str) -> str:
             f"Stderr: {result.stderr}"
         )
 
-    # Return the result as a string.
-    return result.stdout.decode("utf-8")
+    # Get the result as a string and parse it as JSON.
+    result_str = result.stdout.decode("utf-8")
+    result = json.loads(result_str)
+
+    # Augment the result with launch data.
+    result["launch"] = {}
+
+    # Kernel CLI
+    with open("/proc/cmdline", "r") as f:
+        result["launch"]["kernel_cli"] = f.read().strip()
+    
+    # Number of vCPUs
+    with open("/proc/cpuinfo", "r") as f:
+        result["launch"]["num_vcpus"] = f.read().count("processor")
+
+    # Return the result as a JSON string.
+    return json.dumps(result)
+
+

@@ -76,10 +76,10 @@ def attest_tls():
     print()
     print()
     print()
-    print(json.dumps(complete_attestation, indent=2))
+    print(json.dumps(complete_attestation))
 
     fh = open(f"{ATT_DIR}/{ATT_NAME}", 'w')
-    fh.write(json.dumps(complete_attestation, indent=2))
+    fh.write(json.dumps(complete_attestation))
     fh.close()
 
     # print("init model")
