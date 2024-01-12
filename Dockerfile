@@ -19,8 +19,8 @@
 # Build sev_attest_tool
 FROM rust:1.74.0 as builder
 WORKDIR /app
-COPY sev_attest_tool .
-RUN cargo install --path .
+COPY sev-attest-tool .
+RUN cargo build --bin sev_attest_tool --release --no-default-features
 
 # Build the TLS termination service
 FROM ubuntu:latest
@@ -37,8 +37,8 @@ RUN cd /app/guest_tools/gpu_verifiers/local_gpu_verifier && pip3 install .
 RUN cd /app/guest_tools/attestation_sdk && pip3 install . 
 COPY driver_rims/RIM_GH100PROD.swidtag /usr/share/nvidia/rim/RIM_GH100PROD.swidtag
 COPY docker_services/ffdhe2048.txt /etc/ssl/ffdhe2048
-COPY --from=builder /usr/local/cargo/bin/sev_attest_tool /usr/local/bin/sev_attest_tool
-COPY --from=builder /usr/local/cargo/bin/sev_attest_tool /home/guest/.cargo/bin/sev_attest_tool
+COPY --from=builder /app/target/release/sev_attest_tool /usr/local/bin/sev_attest_tool
+COPY --from=builder /app/target/release/sev_attest_tool /home/guest/.cargo/bin/sev_attest_tool
 
 RUN rm /etc/nginx/sites-enabled/default
 RUN cp /app/services/blyss-server-nginx.conf /etc/nginx/sites-available/enclave.blyss.dev

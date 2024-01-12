@@ -82,21 +82,5 @@ def attest_tls():
     fh.write(json.dumps(complete_attestation))
     fh.close()
 
-    # print("init model")
-    # model, tokenizer = init_model()
-    # sample_problem = "def return1():\n"
-    # print("generate one completion")
-    # completion = generate_one_completion(model, tokenizer, sample_problem)
-    # print("problem:", sample_problem)
-    # print()
-    # print("completion:", completion)
-
-    # while True:
-    #     print("Enter a problem:")
-    #     problem = input(">>> ")
-    #     completion = generate_one_completion(model, tokenizer, problem)
-    #     print("completion:", completion)
-
-
 if __name__ == "__main__":
     attest_tls()
